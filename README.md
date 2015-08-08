@@ -1,2 +1,3 @@
 # R-Machine-Learning
-Code for machine learning in R
+
+This repository stores all R code for machine learning methods.  It is used for reference in future projects.
