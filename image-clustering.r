@@ -1,3 +1,5 @@
+#  uses k means to determine the most prevalent colors in a jpg image
+# uses k nearest neighbors to identify the english word for the RGB colors that are returned
 
 library(jpeg)
 library(class)
