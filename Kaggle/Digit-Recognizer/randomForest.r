@@ -34,10 +34,4 @@ rf.pred <- predict(rf.digit, newdata = digit_test)
 plot(rf.pred, results.test)
 table(rf.pred, results.test)
 
-# with only 10 trees, we get 87.60% of observation correct, much better than CART:
-(131 + 166 + 130 + 126 + 139 + 109 + 136 + 148 + 99 + 130) / 1500
-# with 100 trees, we get 93.13% of the test set correct, even better than 10 trees
-(151 + 163 + 145 + 144 + 123 + 134 + 137 + 143 + 123 + 134) / 1500
-# with 100 trees, and using a greater portion of the full data (10K instead of 5k):  got 93.96% of the test set correct
-(287 + 351 + 284 + 267 + 251 + 246 + 303 + 298 + 246 + 286) / 3000
-
+# can just use out of bag error rate instead of validation set for random forests
