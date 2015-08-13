@@ -3,8 +3,8 @@ library(tree)
 library(randomForest)
 library(caret)
 
-digits <- read.csv("~\\train.csv")
-test <- read.csv("~\\test.csv")
+digits <- read.csv("C:\\Users\\Ryan\\Desktop\\Kaggle\\digits\\train.csv")
+test <- read.csv("C:\\Users\\Ryan\\Desktop\\Kaggle\\digits\\test.csv")
 
 
 # change response (label) to a factor
@@ -59,9 +59,16 @@ for (i in 0:9){
     set.seed(1)
     rf.loop <- randomForest(label ~., ntree = 1, data = digit_train_loop, importance = TRUE, do.trace = TRUE)
 
-    rf.pred[,test] <- predict(rf.loop, newdata = digit_test)
-    
+    # need to figure out why it's giving me 1, 2, 3 instead of the real numbers
+    data <- predict(rf.loop, newdata = digit_test)
+    rf.pred[,test] <- data
+
     test <- test + 1
   }
 }
+
+
+
+
+
 
