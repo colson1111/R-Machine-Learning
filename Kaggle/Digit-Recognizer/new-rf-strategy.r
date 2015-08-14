@@ -1,3 +1,4 @@
+
 # Keep variables with >0 variance
 library(tree)
 library(randomForest)
@@ -17,22 +18,13 @@ zerovar <- function(dat) {
   unlist(want)
 }
 
-#  Instead of removing all white spaces, what if we split into black and white?
-digitmat <- as.matrix(digits[,2:ncol(digits)])
-digitmat <- ifelse(digitmat <= 255/2, 0, 1)
-digits2 <- as.data.frame(digitmat)
-digits2$label <- digits$label
-
-zvar <- zerovar(digits2)
-digits3 <- digits2[,-zvar]
-digits3$label <- as.factor(digits3$label)
-
-
+zvar <- zerovar(digits)
+digits2 <- digits[,-zvar]
+digits2$label <- as.factor(digits2$label)
 
 #  now we can ignore pixels with 0 variance and build a more complex model
-#  and we only consider the difference between more black and more white
-samp <- sample(1:nrow(digits3), size = 10000, replace = FALSE)
-digit_samp <- digits3[samp,]
+samp <- sample(1:nrow(digits2), size = 10000, replace = FALSE)
+digit_samp <- digits2[samp,]
 
 #validate using test and training sets
 set.seed(1)
@@ -43,28 +35,40 @@ results.test <- digit_samp$label[-train]
 
 # what if we use the whole tree only to classify between 4 or 9 or neither, can we get them correct?
 # then we do a separate randomforest for each combination of digits, whichever # gets the most votes wins
-i <- 0
-j <- 0
-test <- 1
-rf.pred <- matrix(ncol = 90, nrow = nrow(digit_test))
 
-for (i in 0:9){
-  for (j in 0:9){
-    if (i == j){next}
 
+rf.pred <- matrix(ncol = 0, nrow = nrow(digit_test))
+
+for (i in 1:3){
+    print(paste("Starting Loop #", i))
+  
+    samp <- sample(0:9, 4, replace = FALSE)
+    j <- samp[1]
+    k <- samp[2]
+    l <- samp[3]
+    m <- samp[4]
+    
     digit_train_loop <- digit_train
-
-    digit_train_loop$label <- ifelse(digit_train_loop$label == i, i, ifelse(digit_train_loop$label == j, j, -1))
+    
+    digit_train_loop$label <- ifelse(digit_train_loop$label == j, j, 
+                                     ifelse(digit_train_loop$label == k, k,
+                                            ifelse(digit_train_loop$label == l, l,
+                                                   ifelse(digit_train_loop$label == m, m, -1))))
+                                            
     digit_train_loop$label <- factor(digit_train_loop$label)
+    
+    # build tree
     set.seed(1)
-    rf.loop <- randomForest(label ~., ntree = 1, data = digit_train_loop, importance = TRUE, do.trace = TRUE)
-
-    # need to figure out why it's giving me 1, 2, 3 instead of the real numbers
+    rf.loop <- randomForest(label ~., ntree = 5, data = digit_train_loop, importance = TRUE, do.trace = TRUE)
+    
+    # predict new
     data <- predict(rf.loop, newdata = digit_test)
-    rf.pred[,test] <- data
-
-    test <- test + 1
-  }
+    data <- as.data.frame(data)
+    
+    # join onto rf.pred
+    rf.pred <- cbind(rf.pred, data)
+    colnames(rf.pred)[i] <- i
+  
 }
 
 
