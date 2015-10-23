@@ -3,7 +3,7 @@ library(C50)
 library(caret)
 library(foreach)
 library(doSNOW)
-library(prc)
+library(pROC)
 
 data(churn)
 
@@ -69,7 +69,7 @@ ggplot(gbmTune) + theme(legend.position = "tmp")
 # PREDICTIONS ON TEST SET
 # predict class
 gbmPred <- predict(gbmTune, churnTest)
-str(gmbPred)
+str(gbmPred)
 
 # predict class probability
 gbmProbs <- predict(gbmTune, churnTest, type = "prob")
@@ -111,3 +111,8 @@ fdaTune <- train(churn ~ ., data = churnTrain,
                  tuneLength = 10,
                  trControl = ctrl,
                  metric = "ROC")
+
+
+
+
+
