@@ -1,0 +1,124 @@
+---
+title: "Bias-Variance Tradeoff"
+author: "Craig Olson"
+date: "11/21/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Bias-Variance Tradeoff
+
+This is an overview of Bias Variance Tradeoff (dilemma / decomposition).  I provide an overview of what
+this is, what it looks like, and how to deal with it.
+
+$MSE(\hat\theta) = Bias(\hat\theta)^{2} + Var(\hat\theta)$
+
+We see that the MSE is composed of both the Bias and Variance terms.
+
+Mean Squared Error: $\hat\theta = E[(\hat\theta - \theta)^{2}]$
+
+MSE is the average squared error between each of our estimates and the observed value.  It is a common method to measure the accuracy of a model.
+
+In thinking of Bias and Variance, I find it helpful to image a dart board, and talk about these two sources of error in those terms.
+
+![Dartboard image from a better write-up on the subject: http://scott.fortmann-roe.com/docs/BiasVariance.html](/Users/craig/Documents/Practice/R-Machine-Learning/BiasVarianceTradeoff/darts.png)
+
+
+
+
+Bias: $bias(\hat\theta) = E(\hat\theta) - \theta$
+
+Bias is the distance between the predicted value of the model and the actual value.  If we repeatedly run the model on samples of the dataset, how far off on average are the predictions from the actual values?  
+
+In the dart board example, high bias would indicate that our darts (predictions) are all concentrated around some point on the board far away from the bullseye (the actual value).
+
+Variance: $Var(\hat\theta) = \frac{\sum(\hat\theta - \theta)^{2}}{N}$
+
+Variance is the average squared deviation of our observations from their expected value.  It is a way to measure how spread out our predictions are compared to the actual values.
+
+In the dart board example, high variance would indicate that our darts might be concentrated around the bullseye, but they are spread widely around it.
+
+When building machine learning models, our goal is to use enough information from our training data to build a model that accurately predicts new observations.  When we overfit our model to the training data, we might mistake noise for signal and make assumptions about new observations that we don't have enough evidence to make.  This is a case of high variance.
+
+If we are too careful and don't introduce enough information while training our model, we may miss out on important signals and make inaccurate predictions.  This is a case of high bias.
+
+The bias-variance tradeoff requires carefully balancing these two types of errors to build the most accurate model possible without overfitting to the training data.
+
+Now, onto an actual example.
+
+## Simulated Data Example
+
+In the following sections, we will generate simulated polynomial data, fit a series of polynomial models to the data, and then discuss the results in terms of the Bias-Variance Tradeoff.
+
+Below, we generate 200 samples of quartic data (four-degree polynomial).  As we go to fit models, we already know that the best fit we are going to find will be a four-degree polynomial.  However, we will want to take a look at smaller polynomials (to observe underfitting - increased bias) as well as higher-degree polynomials (to observe underfitting - increased variance).
+
+```{r generate data}
+library(data.table)
+library(ggplot2)
+library(RColorBrewer)
+
+generate_data = function(f, sample_size = 100){
+  x = runif(sample_size, min=-4, max=5)
+  y = f(x) + rnorm(sample_size, mean=0, sd=30)
+  data.table(x,y)
+}
+
+f = function(x) {x^4 - x^3 + 2*x^2 - x + 5}
+
+dat = generate_data(f, sample_size = 200)
+
+```
+
+Here we see a plot of our generated data.  It forms a pretty obvious U-shape, so whatever model we  build will need to be able to properly fit this shape.
+
+```{r simulated data, echo=FALSE}
+ggplot(dat, aes(x=x,y=y)) +
+  geom_point() +
+  ggtitle("Simulated Data")
+```
+
+Next we need to split our data into training and test sets.  This will allow us to measure bias and variance (there's no way to tell if we are overfitting if we don't have previously unobserved data to test with).  We will use 70% of the data to train, and the remaining 30% as our test set.
+
+```{r train test split}
+
+# create training and test datasets
+set.seed(802)
+smp = sample(x = 1:nrow(dat), size = round(.7*nrow(dat)), replace = F)
+train = dat[smp,]
+test = dat[-smp,]
+
+```
+
+Next, we will plot our training points in black, and our test points in red.  We will build 3 polynomial models to compare:  1 degree (linear), 4-degree, and 25-degree.  We plot each of these models to observe how the fluctuations in the model compare to the training data.
+
+```{r plot everything}
+
+# fit 3 models to the training data.  One underfit, one overfit, and one with 4 degree polynomial
+plot(y~x, data=train, col='black', cex=1, pch=1)
+points(y~x, data=test, col='red', cex=1, pch =1)
+grid = seq(from = min(train$x), to = max(train$x), by = 0.01)
+
+#display.brewer.all(3) # display color brewer palettes with n values
+colors = brewer.pal(n=5, name="Set1")
+j=1
+for (i in c(1,4,25)){
+  grid_predict = data.frame(x=grid)
+  mod = lm(y~poly(x, degree=i), data=train)
+  lines(grid, predict(mod, newdata=grid_predict), col=colors[j], lwd=3, lty=1)
+  assign(paste0("model_",i), mod)
+  j = j+1
+}
+title("Comparison of Polynomial Functions - Training and Test Data")
+legend(x=-4, y =500, 
+       legend = c("y ~ poly(x,1)", "y ~ poly(x,4)", "y ~ poly(x,25)"),
+       col=colors, lty=1, lwd=2)
+```
+
+As you can see, the 1-degree model doesn't really capture any of the variation in the data.  It is likely to be a case of both high variance and high bias, since the predictions would be very far off overall and the line doesn't track the fluctuations in the data very well.
+
+The 25-degree polynomial is very strictly fit to the observed training points.  It bounces around from point to point rather than just following the general trend in the data.  This is an obvious case of overfitting, so we would expect high variance and low bias.
+
+As expected, the 4-degree polynomial tracks the training data very well, since we know it is the best choice of model in this case.  Just by looking at the plot we can see this is the optimal choice in terms of bias and variance - we are not overfitting our training data, and our predictions are pretty good on the test set.
