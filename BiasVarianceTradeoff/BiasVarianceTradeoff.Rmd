@@ -55,11 +55,11 @@ In the following sections, we will generate simulated polynomial data, fit a ser
 
 Below, we generate 200 samples of quartic data (four-degree polynomial).  As we go to fit models, we already know that the best fit we are going to find will be a four-degree polynomial.  However, we will want to take a look at smaller polynomials (to observe underfitting - increased bias) as well as higher-degree polynomials (to observe underfitting - increased variance).
 
-```{r generate data}
+```{r generate}
 library(data.table)
 library(ggplot2)
 library(RColorBrewer)
-
+set.seed(807)
 generate_data = function(f, sample_size = 100){
   x = runif(sample_size, min=-4, max=5)
   y = f(x) + rnorm(sample_size, mean=0, sd=30)
@@ -85,7 +85,6 @@ Next we need to split our data into training and test sets.  This will allow us 
 ```{r train test split}
 
 # create training and test datasets
-set.seed(802)
 smp = sample(x = 1:nrow(dat), size = round(.7*nrow(dat)), replace = F)
 train = dat[smp,]
 test = dat[-smp,]
@@ -95,7 +94,6 @@ test = dat[-smp,]
 Next, we will plot our training points in black, and our test points in red.  We will build 3 polynomial models to compare:  1 degree (linear), 4-degree, and 25-degree.  We plot each of these models to observe how the fluctuations in the model compare to the training data.
 
 ```{r plot everything}
-
 # fit 3 models to the training data.  One underfit, one overfit, and one with 4 degree polynomial
 plot(y~x, data=train, col='black', cex=1, pch=1)
 points(y~x, data=test, col='red', cex=1, pch =1)
@@ -122,3 +120,93 @@ As you can see, the 1-degree model doesn't really capture any of the variation i
 The 25-degree polynomial is very strictly fit to the observed training points.  It bounces around from point to point rather than just following the general trend in the data.  This is an obvious case of overfitting, so we would expect high variance and low bias.
 
 As expected, the 4-degree polynomial tracks the training data very well, since we know it is the best choice of model in this case.  Just by looking at the plot we can see this is the optimal choice in terms of bias and variance - we are not overfitting our training data, and our predictions are pretty good on the test set.
+
+Finally, I want to visualize the Bias-Variance tradeoff in one more way.  This is a pretty common plot in text books, which shows the MSE for the training and test sets as model complexity increases.  The more complex the model, the more likely it will overfit the data and have high variance.
+
+## Bias Variance Tradeoff Plot - MSE vs. Model Complexity
+
+In this plot, we will see that the MSE for the training set will always decrease as model complexity increases.  This is a trivial point; if we've built a model that fits every single point in the training data perfectly, we would have MSE=0.
+
+Something different happens when we plot the test data MSE.  Rather than a decreasing trend, we see a minimum at the optimal location of the bias-variance tradeoff - this is the point at which we minimize MSE without overfitting the training data.  In other words, as the model tries to fit the training points exactly, it must also start to fit unseen test data worse.
+
+
+```{r mse plot}
+# Next, we want to run 10 models, calculate MSE on the test set, and plot: degrees vs. MSE
+polys = c(2,3,4,5,8,10,15,20)
+model_list = c()
+
+for (i in 1:length(polys)){
+  mod = lm(y ~ poly(x, degree=polys[i]), data=train)
+  model_list[[i]] = mod
+  assign(paste0("model_", polys[i]), mod)
+}
+```
+
+```{r mse plot 2, echo=FALSE}
+mod1 = lm(y ~ poly(x, degree=polys[1]), data=train)
+mod2 = lm(y ~ poly(x, degree=polys[2]), data=train)
+mod3 = lm(y ~ poly(x, degree=polys[3]), data=train)
+mod4 = lm(y ~ poly(x, degree=polys[4]), data=train)
+mod5 = lm(y ~ poly(x, degree=polys[5]), data=train)
+mod6 = lm(y ~ poly(x, degree=polys[6]), data=train)
+mod7 = lm(y ~ poly(x, degree=polys[7]), data=train)
+mod8 = lm(y ~ poly(x, degree=polys[8]), data=train)
+
+
+test_mse = c()
+test_mse[1] = mean((test$y - predict(mod1, test)) ^ 2)
+test_mse[2] = mean((test$y - predict(mod2, test)) ^ 2)
+test_mse[3] = mean((test$y - predict(mod3, test)) ^ 2)
+test_mse[4] = mean((test$y - predict(mod4, test)) ^ 2)
+test_mse[5] = mean((test$y - predict(mod5, test)) ^ 2)
+test_mse[6] = mean((test$y - predict(mod6, test)) ^ 2)
+test_mse[7] = mean((test$y - predict(mod7, test)) ^ 2)
+test_mse[8] = mean((test$y - predict(mod8, test)) ^ 2)
+
+train_mse = c()
+train_mse[1] = mean((train$y - predict(mod1, train)) ^ 2)
+train_mse[2] = mean((train$y - predict(mod2, train)) ^ 2)
+train_mse[3] = mean((train$y - predict(mod3, train)) ^ 2)
+train_mse[4] = mean((train$y - predict(mod4, train)) ^ 2)
+train_mse[5] = mean((train$y - predict(mod5, train)) ^ 2)
+train_mse[6] = mean((train$y - predict(mod6, train)) ^ 2)
+train_mse[7] = mean((train$y - predict(mod7, train)) ^ 2)
+train_mse[8] = mean((train$y - predict(mod8, train)) ^ 2)
+
+plot(x=polys, y=test_mse, type="l", col="red",
+     ylim=c(min(min(train_mse), min(test_mse)/2),max(train_mse[1:3], test_mse[1:3])))
+points(x=polys, y=test_mse, col="red", cex=1, pch=16)
+points(x=polys, y=train_mse, type="l", col="blue")
+points(x=polys, y=train_mse, col="blue", cex=1, pch=16)
+legend("top",legend=c("Test Set", "Training Set"),
+       col=c("red", "blue"), lty=1)
+title("MSE vs. Model Complexity\nOn Training and Test Sets")
+
+```
+
+```{r print}
+dat = data.table(polys = polys,
+                 train_mse = train_mse,
+                 test_mse = test_mse)
+dat
+```
+
+Here, we can see that the 4th-degree polynomial is the model that minimizes the test MSE.  We have fit the polynomial model well (reducing bias as much as possible), and we've avoided overfitting the training data (minimizing variance).
+
+When building machine learning models, it is vitally important to be cognizant of the bias-variance tradeoff.  If you overfit the training data, you end up having high variance and will have trouble applying your model to new sets of data.  If you don't fit the model well enough, you will have high bias and your model will not incorporate important details required to properly make predictions.  There are a range of machine learning methods that automatically work to reduce variance while incorporating as much information as possible.
+
+# Random Forest
+A single decision tree can easily overfit training data.  If, for example, you build a decision tree with all observations and all variables, and continue splitting until every observation is in its own terminal node, you will have completely overfit the data, reducing training MSE to 0, but your model will be worthless for new data.  Generally you wouldn't continue in this fashion, but you can see where it might be easy to overfit here.
+
+The random forest uses several methods to help with the Bias Variance Tradeoff.
+
+1.  Ensemble of Trees:  rather than a single tree, a random forest builds a large number of decision trees and averages the final predictions.  Generally, 500 trees are built as a starting point.  This value can be tuned, but generally is a pretty good number.
+
+2.  Shallow Trees:  Random forest generally uses shallower trees than you would build for decision trees, since it doesn't need more depth to make better predictions (and reduce bias), you can just make more trees (although you probably won't need to)!
+
+3.  Randomization:  Random forest randomly selects observations (with replacement) for each tree, and variables at each split.  This keeps the algorithm from favoring certain observations or variables and allows it to find less valuable splitting criteria. This clearly helps to avoid overfitting and gives the added bonus of out-of-bag samples - the resampling method holds out about 1/3 of observations from the initial datasetin each tree which can be used to calculate out-of-bag error.  It has been shown that out-of-bag error estimates are unbiased, so we are able to include more data in the training set (if desired).
+
+# Lasso / Ridge Regression
+
+Placeholder for Lasso / Ridge discussion.
+
